@@ -31,17 +31,19 @@ def update_item(item_id):
     return jsonify(data), 200
 
 # DELETE /pantry/<int:item_id>
+
 @app.route('/pantry/<int:item_id>', methods=['DELETE'])
 def delete_item(item_id):
-    # Validate index exists
+    # If you're using an in-memory list `pantry`
+    # Validate index first
     if item_id < 0 or item_id >= len(pantry):
         return jsonify({"error": "Item not found"}), 404
 
     # Remove the item
     pantry.pop(item_id)
 
-    # Return a valid response. 204 typically has no body.
-    return '', 204
+    # Return a valid empty 204 response
+    return Response(status=2
 
 if __name__ == '__main__':
     app.run(debug=True)
