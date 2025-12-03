@@ -1,3 +1,4 @@
+# /Users/sgerke/Desktop/prepify/prepify/__init__.py
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 import os
@@ -13,6 +14,11 @@ def create_app():
 
     from .routes import pantry_bp
     app.register_blueprint(pantry_bp)
+
+    @app.route('/__whoami')
+    def whoami():
+        # This will return the path to THIS file (the module where this function is defined)
+        return __file__, 200
 
     with app.app_context():
         db.create_all()
