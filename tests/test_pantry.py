@@ -1,4 +1,3 @@
-cat > tests/test_pantry.py << 'EOF'
 import pytest
 from prepify import create_app, db
 
@@ -23,4 +22,3 @@ def test_get_items(client):
     data = r.get_json()
     assert len(data) == 1
     assert data[0]['name'] == 'Rice'
-EOF
