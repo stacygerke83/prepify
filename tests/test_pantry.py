@@ -1,6 +1,6 @@
 import pytest
-from app import create_app, db
-from app.models import PantryItem
+from prepify import create_app, db
+
 
 @pytest.fixture
 def client():
