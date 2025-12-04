@@ -1,4 +1,4 @@
-name: Milestone One CI
+name: Milestone One CI (Python)
 
 on:
   push:
@@ -9,43 +9,61 @@ on:
 
 jobs:
   build-and-test:
-    name: Setup, Lint, Typecheck, Test, Build, Audit
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          node-version: '20'
-          cache: 'npm'
+          python-version: '3.11'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Install dependencies
         run: |
-          if [ -f package-lock.json ]; then
-            npm ci
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          # Optional tools for validity (uncomment if you add them to requirements.txt)
+          # pip install flake8 black pytest-cov
+
+      - name: Lint (flake8)
+        run: |
+          if python -c "import flake8" 2>/dev/null; then
+            flake8 .
           else
-            npm install
+            echo "flake8 not installed; skipping lint."
           fi
 
-      - name: Lint
-        run: npm run lint
+      - name: Format check (black)
+        run: |
+          if python -c "import black" 2>/dev/null; then
+            black --check .
+          else
+            echo "black not installed; skipping format check."
+          fi
 
-      - name: Check formatting
-        run: npm run format:check
+      - name: Run tests (pytest)
+        run: |
+          if python -c "import pytest" 2>/dev/null; then
+            pytest -q
+          else
+            echo "pytest not installed; skipping tests."
+            exit 1
+          fi
 
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Run tests
-        run: npm test -- --ci
-        env:
-          CI: true
-
-      - name: Build
-        run: npm run build
-
-      - name: Audit production dependencies
-        run: npm audit --production --audit-level=critical
+      - name: Security scan (bandit)
+        run: |
+          if python -c "import bandit" 2>/dev/null; then
+            bandit -r .
+          else
+            echo "bandit not installed; skipping security scan."
+          fi
