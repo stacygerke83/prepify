@@ -1,26 +1,57 @@
-# /Users/sgerke/Desktop/prepify/prepify/__init__.py
-from flask import Flask
+# prepify/__init__.py
+from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 import os
+import sqlite3
 
 db = SQLAlchemy()
 
+# Enable SQLite foreign keys (safe even if you don't use FKs yet)
+@event.listens_for(Engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    try:
+        if isinstance(dbapi_connection, sqlite3.Connection):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON;")
+            cursor.close()
+    except Exception:
+        # Don't crash app startup if pragma fails
+        pass
+
+
 def create_app():
     app = Flask(__name__)
+
+    # ---- Config ----
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///prepify.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret')
+
+    # ---- Init DB ----
     db.init_app(app)
 
-    from .routes import pantry_bp
-    app.register_blueprint(pantry_bp)
-
-    @app.route('/__whoami')
-    def whoami():
-        # This will return the path to THIS file (the module where this function is defined)
-        return __file__, 200
-
+    # Import models BEFORE create_all to ensure metadata is loaded
     with app.app_context():
+        from .models import PantryItem  # noqa: F401
         db.create_all()
 
-    return app
+    # ---- Register Blueprints ----
+    from .routes import pantry_bp
+    app.register_blueprint(pantry_bp)  # No prefix → URLs are /pantry, /pantry/<int:item_id>
+
+    # ---- Simple health/whoami route (optional) ----
+    @app.route('/__whoami')
+    def whoami():
+        return __file__, 200
+
+    # ---- Global error handlers (optional but helpful) ----
+    @app.errorhandler(Exception)
+    def handle_unexpected_error(e):
+        # Werkzeug HTTPException will be auto-handled; this catches others
+        from sqlalchemy.exc import SQLAlchemyError
+        if isinstance(e, SQLAlchemyError):
+            # Return DB errors consistently
+            return jsonify({'error': 'Database error', 'details': str(e)}), 500
+        # Fallback
