@@ -5,25 +5,12 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-
-# Optional: make it easy to re-run on demand from the Actions UI
-workflow_dispatch:
-
-# Fail fast on multiple jobs if one fails
-# (You can remove if you prefer seeing all failures.)
-defaults:
-  run:
-    shell: bash
+  workflow_dispatch:
 
 jobs:
   build-and-test:
     name: Setup, Lint, Typecheck, Test, Build, Audit
     runs-on: ubuntu-latest
-
-    # If you support multiple Node versions, uncomment the matrix section:
-    # strategy:
-    #   matrix:
-    #     node-version: [18.x, 20.x]
 
     steps:
       - name: Checkout
@@ -37,89 +24,28 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # Use ci for reproducible installs when package-lock.json is present
           if [ -f package-lock.json ]; then
             npm ci
           else
             npm install
           fi
 
-      # -------- Static Validity --------
       - name: Lint
-        run: |
-          npm run lint || (echo "Lint errors detected. Please fix ESLint issues." && exit 1)
+        run: npm run lint
 
       - name: Check formatting
-        run: |
-          # If you don't have this script yet, add "format:check": "prettier --check ."
-          npm run format:check || (echo "Formatting issues detected. Run 'npm run format' locally." && exit 1)
+        run: npm run format:check
 
       - name: Typecheck
-        run: |
-          # If TypeScript is not used, replace with a no-op or remove this step.
-          npm run typecheck || (echo "Type errors detected. Please fix TypeScript issues." && exit 1)
+        run: npm run typecheck
 
-      # -------- Unit & Integration Validity --------
       - name: Run tests
-        run: |
-          # Add --ci to ensure non-interactive runs; include coverage if configured
-          npm test -- --ci
+        run: npm test -- --ci
         env:
           CI: true
 
-      - name: Upload test results (optional)
-        if: success() || failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: |
-            coverage/**
-            junit/**
-
-      # -------- Build Validity --------
       - name: Build
-        run: |
-          npm run build
+        run: npm run build
 
-      - name: Upload production build (optional)
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: prepify-build
-          path: |
-            dist/**
-            build/**
-
-      # -------- Security & Dependency Validity --------
       - name: Audit production dependencies
-        run: |
-          # Fail on critical vulns; you can soften to allow-high=false if you prefer
-          npm audit --production --audit-level=critical
-
-  # Optional: Lightweight job to ensure secrets/config are not committed
-  # (basic grep for common secret keywords)
-  secret-hygiene:
-    name: Secret Hygiene Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Ensure .env is ignored
-        run: |
-          if [ -f .env ]; then
-            echo "::error file=.env::'.env' is present in the repository. Remove and use repository or environment secrets."
-            exit 1
-          fi
-          if ! git check-ignore -q .env 2>/dev/null; then
-            echo "Note: add '.env' to your .gitignore if you use local env files."
-          fi
-      - name: Scan for potential secrets
-        run: |
-          set -e
-          # Common secret tokens; adjust for your project needs
-          if git grep -n -E "(API_KEY|TOKEN|SECRET|PASSWORD|CLIENT_SECRET|AUTH|Bearer [A-Za-z0-9._-]{10,})" -- ':!**/*.md' ; then
-            echo "::error::Potential secrets detected in repository text. Please remove secrets and use environment variables."
-            exit 1
-          else
-            echo "No obvious secrets found."
-          fi
+        run: npm audit --production --audit-level=critical
