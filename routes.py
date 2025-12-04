@@ -38,26 +38,28 @@ def add_item():
         return jsonify({'error': 'Request must be application/json'}), 415
 
     data = request.get_json()
-    name = _normalize_str(data.get('name', '')).strip()
+    name = (data.get('name') or '').strip()
     if not name:
         return jsonify({'error': 'name is required'}), 400
 
-    quantity = _normalize_str(data.get('quantity', ''))
-    category = _normalize_str(data.get('category', ''))
+    # Normalize text fields (your model uses String for quantity/category)
+    quantity = (data.get('quantity') or '').strip()
+    category = (data.get('category') or '').strip()
 
     item = PantryItem(name=name, quantity=quantity, category=category)
+    db.session.add(item)
+    db.session.commit()
 
-    try:
-        db.session.add(item)
-        db.session.commit()
-        return jsonify({'message': 'Item added', 'item': _serialize_item(item)}), 201
-
-    except (IntegrityError, DataError) as ie:
-        db.session.rollback()
-        return jsonify({'error': 'Invalid data or constraint violation', 'details': str(ie)}), 400
-    except SQLAlchemyError as se:
-        db.session.rollback()
-        return jsonify({'error': 'Database error', 'details': str(se)}), 500
+    # Return the full item including id
+    return jsonify({
+        'message': 'Item added',
+        'item': {
+            'id': item.id,
+            'name': item.name,
+            'quantity': item.quantity,
+            'category': item.category
+        }
+    }), 201
 
 
 @pantry_bp.route('/pantry/<int:item_id>', methods=['PUT'])
@@ -69,32 +71,30 @@ def update_item(item_id):
 
     data = request.get_json()
 
-    # Update name if provided and non-empty
     if 'name' in data:
-        new_name = _normalize_str(data.get('name', '')).strip()
-        if not new_name:
+        name = (data.get('name') or '').strip()
+        if not name:
             return jsonify({'error': 'name cannot be empty'}), 400
-        item.name = new_name
+        item.name = name
 
-    # Update quantity if provided
     if 'quantity' in data:
-        item.quantity = _normalize_str(data.get('quantity', item.quantity))
+        item.quantity = (data.get('quantity') or '').strip()
 
-    # Update category if provided
     if 'category' in data:
-        item.category = _normalize_str(data.get('category', item.category))
+        item.category = (data.get('category') or '').strip()
 
-    try:
-        db.session.commit()
-        return jsonify({'message': 'Item updated', 'item': _serialize_item(item)}), 200
+    db.session.commit()
 
-    except (IntegrityError, DataError) as ie:
-        db.session.rollback()
-        return jsonify({'error': 'Invalid data or constraint violation', 'details': str(ie)}), 400
-    except SQLAlchemyError as se:
-        db.session.rollback()
-        return jsonify({'error': 'Database error', 'details': str(se)}), 500
-
+    # Return the full updated item including id
+    return jsonify({
+        'message': 'Item updated',
+        'item': {
+            'id': item.id,
+            'name': item.name,
+            'quantity': item.quantity,
+            'category': item.category
+        }
+    }), 200
 
 @pantry_bp.route('/pantry/<int:item_id>', methods=['DELETE'])
 def delete_item(item_id):
