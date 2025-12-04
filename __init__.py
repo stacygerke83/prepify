@@ -8,7 +8,6 @@ import sqlite3
 
 db = SQLAlchemy()
 
-# Enable SQLite foreign keys (safe even if you don't use FKs yet)
 @event.listens_for(Engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
     try:
@@ -19,7 +18,6 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
     except Exception:
         # Don't crash app startup if pragma fails
         pass
-
 
 def create_app():
     app = Flask(__name__)
@@ -32,21 +30,17 @@ def create_app():
     # ---- Init DB ----
     db.init_app(app)
 
-    # Import models BEFORE create_all to ensure metadata is loaded
     with app.app_context():
         from .models import PantryItem  # noqa: F401
         db.create_all()
 
-    # ---- Register Blueprints ----
     from .routes import pantry_bp
     app.register_blueprint(pantry_bp)  # No prefix → URLs are /pantry, /pantry/<int:item_id>
 
-    # ---- Simple health/whoami route (optional) ----
     @app.route('/__whoami')
     def whoami():
         return __file__, 200
 
-    # ---- Global error handlers (optional but helpful) ----
     @app.errorhandler(Exception)
     def handle_unexpected_error(e):
         # Werkzeug HTTPException will be auto-handled; this catches others
