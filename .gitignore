@@ -1,0 +1,8 @@
+# Ignore env files
+.env
+backend/.env
+
+# (other typical ignores)
+venv/
+__pycache__/
+*.pyc
