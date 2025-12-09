@@ -1,56 +1,69 @@
-from flask import Flask, jsonify, request, Response
+import os
+from pathlib import Path
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+from dotenv import load_dotenv
+
+# --- Load .env from backend directory or repo root ---
+# Attempt to load backend/.env first
+backend_env = Path(__file__).parent / ".env"
+root_env = Path(__file__).resolve().parents[1] / ".env"  # one level up from backend/
+
+if backend_env.exists():
+    load_dotenv(backend_env)
+elif root_env.exists():
+    load_dotenv(root_env)
+else:
+    # Fallback: no .env file found; rely on OS environment variables
+    pass
+
+# Now you can access env vars via os.getenv(...)
+# e.g., SPOONACULAR_API_KEY will be available if set in .env or in the OS
+
+from services.recipe_api import get_recipes_with_links, SpoonacularError
+from services.weekly_menu import generate_weekly_menu
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Temporary in-memory pantry list
-pantry = []
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok"}), 200
 
-@app.route('/')
-def home():
-    return "Prepify API is running!", 200
+@app.route("/recipes/suggest", methods=["POST"])
+def suggest_recipes():
+    data = request.get_json(force=True) or {}
+    ingredients = data.get("ingredients", [])
+    count = int(data.get("count", 5))
+    ranking = int(data.get("ranking", 1))
 
-# GET /pantry
-@app.route('/pantry', methods=['GET'])
-def get_pantry():
-    return jsonify(pantry), 200
+    if not isinstance(ingredients, list) or not ingredients:
+        return jsonify({"error": "Provide non-empty 'ingredients' list."}), 400
 
-# POST /pantry
-@app.route('/pantry', methods=['POST'])
-def add_item():
-    data = request.get_json(silent=True) or {}
-    name = data.get('name')
-    quantity = data.get('quantity')
+    try:
+        recipes = get_recipes_with_links(ingredients, number=count, ranking=ranking)
+        return jsonify({"recipes": recipes}), 200
+    except SpoonacularError as e:
+        return jsonify({"error": str(e)}), 502
 
-    if not name:
-        return jsonify({"error": "name is required"}), 400
+@app.route("/weekly-menu", methods=["POST"])
+def weekly_menu():
+    data = request.get_json(force=True) or {}
+    ingredients = data.get("ingredients", [])
+    days = int(data.get("days", 7))
+    count = int(data.get("count", max(days * 2, 10)))
+    ranking = int(data.get("ranking", 1))
 
-    pantry.append({"name": name, "quantity": quantity})
-    return jsonify({"name": name, "quantity": quantity}), 201
+    if not isinstance(ingredients, list) or not ingredients:
+        return jsonify({"error": "Provide non-empty 'ingredients' list."}), 400
 
-# PUT /pantry/<int:item_id>
-@app.route('/pantry/<int:item_id>', methods=['PUT'])
-def update_item(item_id):
-    if item_id < 0 or item_id >= len(pantry):
-        return jsonify({"error": "Item not found"}), 404
+    try:
+        candidates = get_recipes_with_links(ingredients, number=count, ranking=ranking)
+        menu = generate_weekly_menu(candidates, days=days)
+        return jsonify({"menu": menu}), 200
+    except SpoonacularError as e:
+        return jsonify({"error": str(e)}), 502
 
-    data = request.get_json(silent=True) or {}
-    name = data.get('name')
-    quantity = data.get('quantity')
-
-    if not name:
-        return jsonify({"error": "name is required"}), 400
-
-    pantry[item_id] = {"name": name, "quantity": quantity}
-    return jsonify(pantry[item_id]), 200
-
-# DELETE /pantry/<int:item_id>
-@app.route('/pantry/<int:item_id>', methods=['DELETE'])
-def delete_item(item_id):
-    if item_id < 0 or item_id >= len(pantry):
-        return jsonify({"error": "Item not found"}), 404
-
-    pantry.pop(item_id)
-    return Response(status=204)
-
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", "5000"))
+    app.run(host="0.0.0.0", port=port, debug=True)
