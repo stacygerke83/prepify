@@ -4,12 +4,10 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from dotenv import load_dotenv
 
-# Load .env from repo root
 root_env = Path(__file__).parent / ".env"
 if root_env.exists():
     load_dotenv(root_env)
 
-# Create app if you're not using app_factory
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
