@@ -13,27 +13,22 @@ if root_env.exists():
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Import services AFTER env is loaded so they can read API key
 from services.recipe_api import get_recipes_with_links, SpoonacularError
 from services.weekly_menu import generate_weekly_menu
 
-# --- Debug route to list registered routes ---
 @app.route("/debug/routes", methods=["GET"])
 def list_routes():
     routes = sorted([str(rule) for rule in app.url_map.iter_rules()])
     return jsonify({"routes": routes}), 200
 
-# --- Simple health check ---
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"}), 200
 
-# --- Environment check (does not reveal secret) ---
 @app.route("/env-check", methods=["GET"])
 def env_check():
     return {"hasKey": bool(os.getenv("SPOONACULAR_API_KEY"))}, 200
 
-# --- Milestone 2: recipe suggestions ---
 @app.route("/recipes/suggest", methods=["POST"])
 def suggest_recipes():
     data = request.get_json(force=True) or {}
@@ -50,7 +45,6 @@ def suggest_recipes():
     except SpoonacularError as e:
         return jsonify({"error": str(e)}), 502
 
-# --- Milestone 2: weekly menu generation ---
 @app.route("/weekly-menu", methods=["POST"])
 def weekly_menu():
     data = request.get_json(force=True) or {}
