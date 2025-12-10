@@ -1,12 +1,11 @@
-import requests as _requests
-requests = _requests 
-
 import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 from pathlib import Path
-import requests  # keep at module scope so tests can monkeypatch backend.app.requests.get
+
+import requests as _requests
+requests = _requests 
 
 backend_env = Path(__file__).parent / ".env"
 root_env = Path(__file__).resolve().parents[1] / ".env"
