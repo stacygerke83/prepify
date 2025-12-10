@@ -1,12 +1,15 @@
-# Ignore env files
 .env
+*.env
+**/.env
+
 backend/.env
 
-# (other typical ignores)
 venv/
+.env*/        # e.g., .env.local, .env.dev, etc.
+
 __pycache__/
+*.py[cod]
 *.pyc
 
-if ! grep -q "^\.env$" .gitignore 2>/dev/null; then
-  printf "%s\n" ".env" "venv/" "__pycache__/" "*.pyc" >> .gitignore
-fi
+*.log
+.DS_Store
