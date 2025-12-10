@@ -1,3 +1,6 @@
+import requests as _requests
+requests = _requests 
+
 import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
