@@ -1,18 +1,10 @@
-Sanity check: initialize SpoonacularClient and fetch a small set of recipes.
-
-Run:
-    python scripts/check_spoonacular.py
-
-Expected:
-    - Prints base URL and whether API key is loaded
-    - Shows 1-5 normalized recipe summaries
-"""
-
 from dotenv import load_dotenv
 load_dotenv()  # Load variables from .env
 
-from services.spoonacular_client import SpoonacularClient, SpoonacularAPIError
+import os, sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from services.spoonacular_client import SpoonacularClient, SpoonacularAPIError
 
 def main():
     try:
