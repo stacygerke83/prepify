@@ -1,10 +1,12 @@
+
 from dotenv import load_dotenv
-load_dotenv()  # Load variables from .env
+load_dotenv()  # Make sure the .env in project root is read
 
 import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from services.spoonacular_client import SpoonacularClient, SpoonacularAPIError
+
 
 def main():
     try:
@@ -13,7 +15,6 @@ def main():
         print(f"Base URL: {client.base_url}")
         print(f"API key loaded: {'yes' if client.api_key else 'no'}")
 
-        # Try a tiny query; adjust ingredients as needed
         ingredients = ["egg", "bread"]
         recipes = client.find_by_ingredients(ingredients, number=3)
 
