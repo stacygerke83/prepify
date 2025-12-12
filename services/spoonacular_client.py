@@ -85,7 +85,6 @@ class SpoonacularClient:
         return normalized
 
     def _build_url(self, path: str) -> str:
-        """Safe join without double slashes."""
         return f"{self.base_url.rstrip('/')}/{path.lstrip('/')}"
 
     def _get(self, path: str, params: Optional[dict] = None) -> Any:
