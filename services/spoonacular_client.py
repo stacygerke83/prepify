@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 import os
@@ -9,15 +10,21 @@ import requests
 DEFAULT_BASE_URL = os.getenv("SPOONACULAR_BASE_URL", "https://api.spoonacular.com")
 FIND_BY_INGREDIENTS_PATH = "/recipes/findByIngredients"
 
+
 class SpoonacularConfigError(Exception):
-    
+    """Raised when Spoonacular configuration is invalid or missing."""
+    pass
+
+
 class SpoonacularAPIError(Exception):
-    
+    """Raised when the Spoonacular API returns a non-success response."""
+
     def __init__(self, status_code: int, message: str, payload: Optional[dict] = None):
         super().__init__(f"Spoonacular API error {status_code}: {message}")
         self.status_code = status_code
         self.payload = payload or {}
-        
+
+
 class SpoonacularClient:
     def __init__(
         self,
@@ -49,7 +56,7 @@ class SpoonacularClient:
         ranking: int = 1,
         ignore_pantry: bool = False,
     ) -> List[Dict[str, Any]]:
-       
+        """Call Spoonacular's /recipes/findByIngredients and normalize results."""
         if not ingredients:
             return []
 
@@ -62,6 +69,7 @@ class SpoonacularClient:
         }
 
         raw = self._get(FIND_BY_INGREDIENTS_PATH, params=params)
+
         normalized: List[Dict[str, Any]] = []
         for item in raw:
             normalized.append(
@@ -82,31 +90,41 @@ class SpoonacularClient:
             )
         return normalized
 
+    # ---------- Internal Helpers ----------
+
     def _build_url(self, path: str) -> str:
         """Safe join without double slashes."""
         return f"{self.base_url.rstrip('/')}/{path.lstrip('/')}"
 
     def _get(self, path: str, params: Optional[dict] = None) -> Any:
-        
+        """
+        Internal GET with basic retry for common transient errors (429 rate limiting and 5xx).
+        Raises SpoonacularAPIError on non-success responses.
+        """
         url = self._build_url(path)
 
         for attempt in range(self.max_retries):
             try:
                 response = self._session.get(url, params=params, timeout=self.timeout_seconds)
 
+                # 2xx success
                 if 200 <= response.status_code < 300:
                     content_type = response.headers.get("Content-Type", "")
                     if "application/json" in content_type:
                         return response.json()
+                    # Fallback: try JSON, else return text
                     try:
                         return response.json()
                     except ValueError:
                         return response.text
 
+                # 429: rate limit
                 if response.status_code == 429:
                     retry_after = response.headers.get("Retry-After")
-                    sleep_secs = float(retry_after) if retry_after and retry_after.isdigit() else (
-                        self.backoff_seconds * (attempt + 1)
+                    sleep_secs = (
+                        float(retry_after)
+                        if retry_after and retry_after.isdigit()
+                        else self.backoff_seconds * (attempt + 1)
                     )
                     if attempt < self.max_retries - 1:
                         time.sleep(sleep_secs)
@@ -117,6 +135,7 @@ class SpoonacularClient:
                         payload=_safe_json(response),
                     )
 
+                # 5xx: server errors
                 if 500 <= response.status_code < 600:
                     if attempt < self.max_retries - 1:
                         time.sleep(self.backoff_seconds * (attempt + 1))
@@ -127,6 +146,7 @@ class SpoonacularClient:
                         payload=_safe_json(response),
                     )
 
+                # Other non-success
                 raise SpoonacularAPIError(
                     response.status_code,
                     _extract_error_message(response),
@@ -134,9 +154,11 @@ class SpoonacularClient:
                 )
 
             except requests.RequestException as e:
+                # Network errors/timeouts: backoff then retry
                 if attempt < self.max_retries - 1:
                     time.sleep(self.backoff_seconds * (attempt + 1))
                     continue
+                # Surface as SpoonacularAPIError with context
                 raise SpoonacularAPIError(
                     -1,
                     f"Request failed: {e.__class__.__name__}: {str(e)}",
@@ -145,23 +167,21 @@ class SpoonacularClient:
 
 
 def _safe_json(response: requests.Response) -> dict:
+    """Best-effort parse of a response body into JSON, else return {'raw': <text>}."""
     try:
         return response.json()
     except ValueError:
         return {"raw": response.text}
-        
-def _extract_error_message(response: requests.Response) -> str:
 
+
+def _extract_error_message(response: requests.Response) -> str:
+    """
+    Extract a human-friendly error message from the response body.
+    Tries JSON fields commonly used by APIs; falls back to status text.
+    """
     try:
         data = response.json()
+        # Look for common fields
         for key in ("message", "error", "status_message"):
             if isinstance(data, dict) and key in data and isinstance(data[key], str):
                 return data[key]
-        if isinstance(data, str):
-            return data[:300]
-        if isinstance(data, list) and data and isinstance(data[0], str):
-            return data[0][:300]
-    except ValueError:
-        pass
-    snippet = response.text[:300].replace("\n", " ").strip()
-    return snippet or f"HTTP {response.status_code}"
