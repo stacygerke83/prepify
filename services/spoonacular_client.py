@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import os
@@ -12,13 +11,10 @@ FIND_BY_INGREDIENTS_PATH = "/recipes/findByIngredients"
 
 
 class SpoonacularConfigError(Exception):
-    """Raised when Spoonacular configuration is invalid or missing."""
     pass
 
-
 class SpoonacularAPIError(Exception):
-    """Raised when the Spoonacular API returns a non-success response."""
-
+    
     def __init__(self, status_code: int, message: str, payload: Optional[dict] = None):
         super().__init__(f"Spoonacular API error {status_code}: {message}")
         self.status_code = status_code
@@ -56,7 +52,6 @@ class SpoonacularClient:
         ranking: int = 1,
         ignore_pantry: bool = False,
     ) -> List[Dict[str, Any]]:
-        # Call Spoonacular's /recipes/findByIngredients and normalize results.
         if not ingredients:
             return []
 
@@ -90,17 +85,12 @@ class SpoonacularClient:
             )
         return normalized
 
-    # ---------- Internal Helpers ----------
-
     def _build_url(self, path: str) -> str:
         """Safe join without double slashes."""
         return f"{self.base_url.rstrip('/')}/{path.lstrip('/')}"
 
     def _get(self, path: str, params: Optional[dict] = None) -> Any:
-        """
-        Internal GET with basic retry for common transient errors (429 rate limiting and 5xx).
-        Raises SpoonacularAPIError on non-success responses.
-        """
+        
         url = self._build_url(path)
 
         for attempt in range(self.max_retries):
@@ -167,7 +157,6 @@ class SpoonacularClient:
 
 
 def _safe_json(response: requests.Response) -> dict:
-    """Best-effort parse of a response body into JSON, else return {'raw': <text>}."""
     try:
         return response.json()
     except ValueError:
@@ -175,10 +164,7 @@ def _safe_json(response: requests.Response) -> dict:
 
 
 def _extract_error_message(response: requests.Response) -> str:
-    """
-    Extract a human-friendly error message from the response body.
-    Tries JSON fields commonly used by APIs; falls back to status text.
-    """
+
     try:
         data = response.json()
         # Look for common fields
