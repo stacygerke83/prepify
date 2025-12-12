@@ -1,3 +1,4 @@
+"""
 Spoonacular API client for Prepify.
 
 Provides a minimal, testable wrapper around the "find by ingredients" endpoint
