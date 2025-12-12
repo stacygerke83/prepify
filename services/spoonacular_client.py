@@ -56,7 +56,7 @@ class SpoonacularClient:
         ranking: int = 1,
         ignore_pantry: bool = False,
     ) -> List[Dict[str, Any]]:
-        """Call Spoonacular's /recipes/findByIngredients and normalize results."""
+        # Call Spoonacular's /recipes/findByIngredients and normalize results.
         if not ingredients:
             return []
 
