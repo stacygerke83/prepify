@@ -40,13 +40,6 @@ class SpoonacularAPIError(Exception):
 
 
 class SpoonacularClient:
-    """
-    Minimal client with:
-      - HTTPS base URL validation
-      - API key injection via query param
-      - Timeouts on requests
-      - Basic retry/backoff for transient 429/5xx errors
-    """
 
     def __init__(
         self,
@@ -69,10 +62,8 @@ class SpoonacularClient:
         if not self.base_url.startswith("https://"):
             raise SpoonacularConfigError("Invalid base URL. Must start with 'https://'.")
 
-        # Pre-constructed session (reused TCP/SSL connections for speed)
         self._session = requests.Session()
 
-    # ---------- Public Methods ----------
 
     def find_by_ingredients(
         self,
