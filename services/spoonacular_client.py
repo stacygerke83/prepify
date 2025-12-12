@@ -93,8 +93,6 @@ class SpoonacularClient:
         # Safe join without double slashes.
         return f"{self.base_url.rstrip('/')}/{path.lstrip('/')}"
 
-   
-
 def _get(self, path: str, params: Optional[dict] = None) -> Any:
     # Internal GET with basic retry for 429 and 5xx; raises SpoonacularAPIError on failure.
     url = self._build_url(path)
@@ -158,4 +156,4 @@ def _get(self, path: str, params: Optional[dict] = None) -> Any:
             response.status_code,
             _extract_error_message(response),
             payload=_safe_json(response),
-            )
+        )
