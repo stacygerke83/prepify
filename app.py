@@ -6,6 +6,7 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 
 def create_app():
+    """Application factory that returns a configured Flask app."""
     # Load .env from repo root
     root_env = Path(__file__).resolve().parent / ".env"
     if root_env.exists():
@@ -14,6 +15,7 @@ def create_app():
     app = Flask(__name__)
     CORS(app, resources={r"/*": {"origins": "*"}})
 
+    # --- Routes (inline) ---
     @app.route("/debug/routes", methods=["GET"])
     def list_routes():
         routes = sorted([str(rule) for rule in app.url_map.iter_rules()])
@@ -27,7 +29,6 @@ def create_app():
     def env_check():
         return {"hasKey": bool(os.getenv("SPOONACULAR_API_KEY"))}, 200
 
-    # Example POST route stub until you add your recipe logic back
     @app.route("/recipes/suggest", methods=["POST"])
     def suggest_recipes():
         data = request.get_json(force=True) or {}
@@ -38,7 +39,7 @@ def create_app():
         if not isinstance(ingredients, list) or not ingredients:
             return jsonify({"error": "Provide non-empty 'ingredients' list."}), 400
 
-        # TODO: Replace this with real logic (you removed services/)
+        # TODO: plug in your real logic here if you had services/* modules before
         recipes = [{"title": "Sample Recipe", "link": "https://example.com"}] * count
         return jsonify({"recipes": recipes}), 200
 
@@ -46,13 +47,15 @@ def create_app():
     def weekly_menu():
         data = request.get_json(force=True) or {}
         days = int(data.get("days", 7))
-        # TODO: Replace with real logic (you removed services/)
+        # TODO: plug in your real logic here
         menu = {f"day_{i+1}": {"breakfast": "oatmeal", "dinner": "salad"} for i in range(days)}
         return jsonify({"menu": menu}), 200
 
     return app
 
+
 if __name__ == "__main__":
+    # Allow `python app.py` to work, too.
     app = create_app()
     port = int(os.getenv("PORT", "5000"))
     print("[INFO] Env loaded:", "SET" if os.getenv("SPOONACULAR_API_KEY") else "NOT SET")
