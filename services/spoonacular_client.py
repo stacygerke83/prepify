@@ -94,11 +94,9 @@ class SpoonacularClient:
         return f"{self.base_url.rstrip('/')}/{path.lstrip('/')}"
 
 def _get(self, path: str, params: Optional[dict] = None) -> Any:
-    # Internal GET with basic retry for 429 and 5xx; raises SpoonacularAPIError on failure.
-    url = self._build_url(path)
-
-    for attempt in range(self.max_retries):
-        try:
+        url = self._build_url(path)
+        for attempt in range(self.max_retries):
+            try:
             response = self._session.get(url, params=params, timeout=self.timeout_seconds)
         except requests.RequestException as e:
             # Network errors/timeouts: backoff then retry
