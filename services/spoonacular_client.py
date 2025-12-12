@@ -93,12 +93,68 @@ class SpoonacularClient:
         # Safe join without double slashes.
         return f"{self.base_url.rstrip('/')}/{path.lstrip('/')}"
 
-    def _get(self, path: str, params: Optional[dict] = None) -> Any:
-        # Internal GET with basic retry for 429 and 5xx; raises SpoonacularAPIError on failure.
-        url = self._build_url(path)
+   
+def _get(self, path: str, params: Optional[dict] = None) -> Any:
+    # Internal GET with basic retry for 429 and 5xx; raises SpoonacularAPIError on failure.
+    url = self._build_url(path)
 
-        for attempt in range(self.max_retries):
+    for attempt in range(self.max_retries):
+        try:
+            response = self._session.get(url, params=params, timeout=self.timeout_seconds)
+        except requests.RequestException as e:
+            # Network errors/timeouts: backoff then retry
+            if attempt < self.max_retries - 1:
+                time.sleep(self.backoff_seconds * (attempt + 1))
+                continue
+            # Surface as SpoonacularAPIError with context
+            raise SpoonacularAPIError(
+                -1,
+                f"Request failed: {e.__class__.__name__}: {str(e)}",
+                payload={"url": url, "params": params},
+            ) from e
+
+        # 2xx success
+        if 200 <= response.status_code < 300:
+            content_type = response.headers.get("Content-Type", "")
+            if "application/json" in content_type:
+                return response.json()
+            # Fallback: try JSON, else return text
             try:
-                response = self._session.get(url, params=params, timeout=self.timeout_seconds)
+                return response.json()
+            except ValueError:
+                return response.text
 
-                # 2xx success
+        # 429: rate limit
+        if response.status_code == 429:
+            retry_after = response.headers.get("Retry-After")
+            if retry_after and retry_after.isdigit():
+                sleep_secs = float(retry_after)
+            else:
+                sleep_secs = self.backoff_seconds * (attempt + 1)
+
+            if attempt < self.max_retries - 1:
+                time.sleep(sleep_secs)
+                continue
+            raise SpoonacularAPIError(
+                response.status_code,
+                "Rate limited by Spoonacular (429). Retries exhausted.",
+                payload=_safe_json(response),
+            )
+
+        # 5xx: server errors
+        if 500 <= response.status_code < 600:
+            if attempt < self.max_retries - 1:
+                time.sleep(self.backoff_seconds * (attempt + 1))
+                continue
+            raise SpoonacularAPIError(
+                response.status_code,
+                f"Server error from Spoonacular ({response.status_code}). Retries exhausted.",
+                payload=_safe_json(response),
+            )
+
+        # Other non-success
+        raise SpoonacularAPIError(
+            response.status_code,
+            _extract_error_message(response),
+            payload=_safe_json(response),
+        )
