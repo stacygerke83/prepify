@@ -72,7 +72,6 @@ class SpoonacularClient:
                     "id": item.get("id"),
                     "title": item.get("title"),
                     "image": item.get("image"),
-                    # Spoonacular 'findByIngredients' doesn't always include the direct source URL; may be None.
                     "source_url": item.get("sourceUrl"),
                     "used_ingredients": [
                         ing.get("name") for ing in item.get("usedIngredients", []) if ing.get("name")
