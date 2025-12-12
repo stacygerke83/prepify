@@ -1,3 +1,4 @@
+# app.py
 import os
 from pathlib import Path
 from flask import Flask, jsonify, request
@@ -5,17 +6,13 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 
 def create_app():
-    # --- Load .env from repo root BEFORE importing services ---
-    root_env = Path(__file__).parent / ".env"
+    # Load .env from repo root
+    root_env = Path(__file__).resolve().parent / ".env"
     if root_env.exists():
         load_dotenv(root_env)
 
     app = Flask(__name__)
     CORS(app, resources={r"/*": {"origins": "*"}})
-
-    # Import after app creation so extensions/blueprints can use it
-    from services.recipe_api import get_recipes_with_links, SpoonacularError
-    from services.weekly_menu import generate_weekly_menu
 
     @app.route("/debug/routes", methods=["GET"])
     def list_routes():
@@ -30,6 +27,7 @@ def create_app():
     def env_check():
         return {"hasKey": bool(os.getenv("SPOONACULAR_API_KEY"))}, 200
 
+    # Example POST route stub until you add your recipe logic back
     @app.route("/recipes/suggest", methods=["POST"])
     def suggest_recipes():
         data = request.get_json(force=True) or {}
@@ -40,39 +38,25 @@ def create_app():
         if not isinstance(ingredients, list) or not ingredients:
             return jsonify({"error": "Provide non-empty 'ingredients' list."}), 400
 
-        try:
-            recipes = get_recipes_with_links(ingredients, number=count, ranking=ranking)
-            return jsonify({"recipes": recipes}), 200
-        except SpoonacularError as e:
-            return jsonify({"error": str(e)}), 502
+        # TODO: Replace this with real logic (you removed services/)
+        recipes = [{"title": "Sample Recipe", "link": "https://example.com"}] * count
+        return jsonify({"recipes": recipes}), 200
 
     @app.route("/weekly-menu", methods=["POST"])
     def weekly_menu():
         data = request.get_json(force=True) or {}
-        ingredients = data.get("ingredients", [])
         days = int(data.get("days", 7))
-        count = int(data.get("count", max(days * 2, 10)))
-        ranking = int(data.get("ranking", 1))
-
-        if not isinstance(ingredients, list) or not ingredients:
-            return jsonify({"error": "Provide non-empty 'ingredients' list."}), 400
-
-        try:
-            candidates = get_recipes_with_links(ingredients, number=count, ranking=ranking)
-            menu = generate_weekly_menu(candidates, days=days)
-            return jsonify({"menu": menu}), 200
-        except SpoonacularError as e:
-            return jsonify({"error": str(e)}), 502
+        # TODO: Replace with real logic (you removed services/)
+        menu = {f"day_{i+1}": {"breakfast": "oatmeal", "dinner": "salad"} for i in range(days)}
+        return jsonify({"menu": menu}), 200
 
     return app
-
 
 if __name__ == "__main__":
     app = create_app()
     port = int(os.getenv("PORT", "5000"))
     print("[INFO] Env loaded:", "SET" if os.getenv("SPOONACULAR_API_KEY") else "NOT SET")
     print("[INFO] Starting Prepify backend on http://127.0.0.1:%d" % port)
-    # Print routes to console on startup for sanity
     print("[INFO] Registered routes:")
     for rule in app.url_map.iter_rules():
         print("  -", rule)
