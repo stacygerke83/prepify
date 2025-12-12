@@ -1,19 +1,3 @@
-"""
-Spoonacular API client for Prepify.
-
-Provides a minimal, testable wrapper around the "find by ingredients" endpoint
-with safe configuration handling, timeouts, and simple retry logic.
-
-Usage:
-    from services.spoonacular_client import SpoonacularClient
-    client = SpoonacularClient()  # reads .env via load_dotenv() in your app entry
-    recipes = client.find_by_ingredients(["chicken", "rice"], number=5)
-
-Environment variables (.env):
-    SPOONACULAR_API_KEY=your_real_api_key
-    SPOONACULAR_BASE_URL=https://api.spoonacular.com   # optional, defaults to https://api.spoonacular.com
-"""
-
 from __future__ import annotations
 
 import os
